@@ -1,4 +1,7 @@
 streamlit
-fbprophet
+prophet
 yfinance
 plotly
+numpy
+pandas
+scipy
