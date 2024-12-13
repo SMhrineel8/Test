@@ -1,9 +1,10 @@
+# Replace fbprophet with statsmodels
 import streamlit as st
 from datetime import date
 import yfinance as yf
-from prophet import Prophet
-from prophet.plot import plot_plotly
-from plotly import graph_objs as go
+import plotly.graph_objs as go
+import pandas as pd
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 START = "2015-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
@@ -36,19 +37,21 @@ def plot_raw_data():
     
 plot_raw_data()
 
-df_train = data[['Date','Close']]
-df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
-m = Prophet()
-m.fit(df_train)
-future = m.make_future_dataframe(periods=period)
-forecast = m.predict(future)
+# Forecasting using Exponential Smoothing
+df_train = data['Close']
+model = ExponentialSmoothing(df_train, trend='add', seasonal='add', seasonal_periods=12).fit()
+forecast = model.forecast(steps=period)
 
 st.subheader('Forecast data')
-st.write(forecast.tail())
-    
-st.write(f'Forecast plot for {n_years} years')
-fig1 = plot_plotly(m, forecast)
+forecast_df = pd.DataFrame({
+    'Date': pd.date_range(start=data['Date'].iloc[-1], periods=period+1)[1:],
+    'Forecast': forecast
+})
+st.write(forecast_df.tail())
+
+# Plot forecast
+fig1 = go.Figure()
+fig1.add_trace(go.Scatter(x=data['Date'], y=data['Close'], name='Historical'))
+fig1.add_trace(go.Scatter(x=forecast_df['Date'], y=forecast_df['Forecast'], name='Forecast'))
+fig1.layout.update(title_text='Stock Price Forecast', xaxis_rangeslider_visible=True)
 st.plotly_chart(fig1)
-st.write("Forecast components")
-fig2 = m.plot_components(forecast)
-st.write(fig2)
